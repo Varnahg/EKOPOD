@@ -15,7 +15,7 @@ export function SettingsView() {
   const importSnapshot = useAppStore((state) => state.importSnapshot)
 
   return (
-    <div className="space-y-4">
+    <div className="h-full space-y-4 overflow-y-auto pr-1">
       <section className="rounded-[2rem] border border-border/70 bg-surface/75 p-5 shadow-card">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">Nastavení</p>
         <h2 className="mt-3 font-serif text-4xl text-text-primary">Lokální preference a data</h2>

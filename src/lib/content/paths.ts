@@ -1,9 +1,4 @@
-export const CONTENT_GLOBS = {
-  questions: '/content/questions/**/*.md',
-  summaries: '/content/summaries/**/*.md',
-  pdfs: '/content/pdf/**/*.pdf',
-} as const
-
+// Root paths stay centralized here; Vite's import.meta.glob must receive literal strings.
 export const CONTENT_ROOTS = {
   questions: '/content/questions/',
   summaries: '/content/summaries/',

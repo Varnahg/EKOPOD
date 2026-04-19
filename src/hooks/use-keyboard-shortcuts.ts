@@ -29,6 +29,10 @@ export function useKeyboardShortcuts(
     }
 
     const listener = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return
+      }
+
       if (isTypingTarget(event.target) && event.key !== 'Escape') {
         return
       }

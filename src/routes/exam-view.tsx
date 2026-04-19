@@ -1,28 +1,25 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { Clock3, Play, TimerReset } from 'lucide-react'
+import { Clock3, Play, Search, X } from 'lucide-react'
 
 import { DetailPanel } from '@/components/detail-panel'
 import { Flashcard } from '@/components/flashcard'
 import { FlashcardControls } from '@/components/flashcard-controls'
-import { QuestionFilters } from '@/components/question-filters'
+import { SetChooser } from '@/components/set-chooser'
 import { SessionSummary } from '@/components/session-summary'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
-import { filterQuestions, getProgressEntry } from '@/lib/content/query'
+import { filterQuestions } from '@/lib/content/query'
 import { buildSessionQuestionIds, createSession } from '@/lib/content/session'
+import { DEFAULT_FILTERS } from '@/lib/progress'
+import { getSetDisplayLabel } from '@/lib/theme'
 import { useContent } from '@/providers/use-content'
 import { useAppStore } from '@/store/app-store'
 import type { MasteryLevel } from '@/types/content'
-import { sortText } from '@/lib/utils'
+import { cn, sortText } from '@/lib/utils'
 
 function createFilterOptions(questions: ReturnType<typeof useContent>['validQuestions']) {
   return {
     sets: sortText([...new Set(questions.map((question) => question.set))]),
     chapters: sortText([...new Set(questions.map((question) => question.chapter))]),
-    subchapters: sortText(
-      [...new Set(questions.map((question) => question.subchapter).filter(Boolean) as string[])],
-    ),
-    tags: sortText([...new Set(questions.flatMap((question) => question.tags))]),
-    difficulties: [...new Set(questions.map((question) => question.difficulty))].sort((a, b) => a - b),
   }
 }
 
@@ -36,31 +33,46 @@ export function ExamView() {
   const selectedQuestionId = useAppStore((state) => state.selectedQuestionId)
   const activeSession = useAppStore((state) => state.activeSession)
   const setFilters = useAppStore((state) => state.setFilters)
-  const resetFilters = useAppStore((state) => state.resetFilters)
   const selectQuestion = useAppStore((state) => state.selectQuestion)
   const setDetailOpen = useAppStore((state) => state.setDetailOpen)
   const setDetailTab = useAppStore((state) => state.setDetailTab)
   const revealAnswer = useAppStore((state) => state.revealAnswer)
+  const hideAnswer = useAppStore((state) => state.hideAnswer)
   const startSessionAction = useAppStore((state) => state.startSession)
   const clearSession = useAppStore((state) => state.clearSession)
+  const advanceSessionAction = useAppStore((state) => state.advanceSession)
   const moveSessionNext = useAppStore((state) => state.moveSessionNext)
   const moveSessionPrevious = useAppStore((state) => state.moveSessionPrevious)
   const rateCurrentQuestion = useAppStore((state) => state.rateCurrentQuestion)
-  const toggleFavorite = useAppStore((state) => state.toggleFavorite)
   const deferredSearch = useDeferredValue(filters.search)
   const [revealedQuestionId, setRevealedQuestionId] = useState<string | null>(null)
+  const [timerEnabled, setTimerEnabled] = useState(settings.examTimerEnabled)
 
   const session = activeSession?.mode === 'exam' ? activeSession : null
   const filterOptions = useMemo(() => createFilterOptions(content.validQuestions), [content.validQuestions])
-  const filteredQuestions = useMemo(
-    () =>
-      filterQuestions(
-        content.validQuestions,
-        { ...filters, search: deferredSearch, showInvalid: false },
-        progress,
-      ),
-    [content.validQuestions, deferredSearch, filters, progress],
+  const selectedSet = filters.sets.length === 1 ? filters.sets[0] : null
+  const selectedChapter = filters.chapters[0] ?? ''
+
+  const simplifiedFilters = useMemo(
+    () => ({
+      ...DEFAULT_FILTERS,
+      search: deferredSearch,
+      sets: filters.sets,
+      chapters: filters.chapters,
+      showInvalid: false,
+    }),
+    [deferredSearch, filters.chapters, filters.sets],
   )
+
+  const filteredQuestions = useMemo(
+    () => filterQuestions(content.validQuestions, simplifiedFilters, progress),
+    [content.validQuestions, progress, simplifiedFilters],
+  )
+  const plannedSessionQuestionIds = useMemo(
+    () => buildSessionQuestionIds(filteredQuestions, progress, 'random', 'exam'),
+    [filteredQuestions, progress],
+  )
+
   const currentQuestionId = session
     ? session.questionIds[session.currentIndex] ?? null
     : selectedQuestionId ?? filteredQuestions[0]?.id ?? null
@@ -68,20 +80,34 @@ export function ExamView() {
   const relatedSummary = currentQuestion?.summaryId
     ? content.summaryMap[currentQuestion.summaryId]
     : content.summaries.find((summary) => summary.relatedQuestionIds.includes(currentQuestion?.id ?? ''))
-  const relatedPdf = currentQuestion ? content.pdfMap[currentQuestion.source.pdfPath] ?? content.primaryPdf : content.primaryPdf
-  const revealed =
-    session
-      ? session.revealed || Boolean(session.completedAt)
-      : Boolean(currentQuestionId && revealedQuestionId === currentQuestionId)
-  const isFavorite = currentQuestion ? getProgressEntry(progress, currentQuestion.id).favorite : false
+  const relatedPdf = currentQuestion
+    ? content.pdfMap[currentQuestion.source.pdfPath] ?? content.primaryPdf
+    : content.primaryPdf
+  const revealed = session
+    ? session.revealed || Boolean(session.completedAt)
+    : Boolean(currentQuestionId && revealedQuestionId === currentQuestionId)
+
+  useEffect(() => {
+    setDetailOpen(false)
+  }, [setDetailOpen])
 
   useEffect(() => {
     if (!selectedQuestionId && filteredQuestions[0]) {
       selectQuestion(filteredQuestions[0].id)
     }
   }, [filteredQuestions, selectQuestion, selectedQuestionId])
+
+  useEffect(() => {
+    if (!selectedQuestionId || filteredQuestions.some((question) => question.id === selectedQuestionId)) {
+      return
+    }
+
+    selectQuestion(filteredQuestions[0]?.id ?? null)
+    setDetailOpen(false)
+  }, [filteredQuestions, selectQuestion, selectedQuestionId, setDetailOpen])
+
   const handleStartSession = () => {
-    if (!filteredQuestions.length) {
+    if (!plannedSessionQuestionIds.length) {
       return
     }
 
@@ -89,10 +115,10 @@ export function ExamView() {
       createSession({
         mode: 'exam',
         sourceLabel: filters.chapters[0] ?? filters.sets[0] ?? 'Simulace z aktuálního výběru',
-        questionIds: buildSessionQuestionIds(filteredQuestions, progress, 'random', 'exam'),
+        questionIds: plannedSessionQuestionIds,
         repeatUntilMastered: false,
         repeatThreshold: 2,
-        timerEnabled: settings.examTimerEnabled,
+        timerEnabled,
         timerSeconds: settings.examTimerSeconds,
       }),
     )
@@ -102,121 +128,246 @@ export function ExamView() {
 
   const handleReveal = () => {
     if (session) {
-      revealAnswer()
+      if (session.revealed) {
+        hideAnswer()
+      } else {
+        revealAnswer()
+      }
       return
     }
 
-    setRevealedQuestionId(currentQuestionId)
+    setRevealedQuestionId((current) => (current === currentQuestionId ? null : currentQuestionId))
   }
 
   const handleRate = (rating: MasteryLevel) => {
     rateCurrentQuestion(rating, filteredQuestions)
+    setDetailOpen(false)
     if (!session) {
       setRevealedQuestionId(null)
     }
   }
 
+  const handlePrevious = () => {
+    if (!session) {
+      return
+    }
+
+    moveSessionPrevious()
+    setDetailOpen(false)
+  }
+
+  const handleNext = () => {
+    if (!session) {
+      return
+    }
+
+    const atLastQuestion = session.currentIndex >= session.questionIds.length - 1
+
+    if (atLastQuestion) {
+      const shouldFinish = window.confirm('Jsi na poslední otázce. Chceš ukončit simulaci a zobrazit shrnutí průchodu?')
+
+      if (shouldFinish) {
+        advanceSessionAction(content.validQuestions)
+      }
+
+      return
+    }
+
+    moveSessionNext()
+    setDetailOpen(false)
+  }
+
+  const handleResetQuickFilters = () => {
+    setFilters({
+      search: '',
+      chapters: [],
+    })
+  }
+
   useKeyboardShortcuts(settings.keyboardShortcuts, {
     onReveal: handleReveal,
-    onPrevious: session ? moveSessionPrevious : undefined,
-    onNext: session ? moveSessionNext : undefined,
+    onPrevious: handlePrevious,
+    onNext: handleNext,
     onToggleDetail: () => currentQuestion && setDetailOpen(!detailOpen),
-    onToggleFavorite: () => currentQuestion && toggleFavorite(currentQuestion.id),
     onClose: () => setDetailOpen(false),
     onFocusSearch: () => document.getElementById('question-search')?.focus(),
     onRate: revealed ? handleRate : undefined,
   })
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[2rem] border border-border/70 bg-surface/75 p-5 shadow-card">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="space-y-3 xl:flex xl:h-full xl:min-h-0 xl:flex-col xl:space-y-3">
+      <section className="rounded-[1.35rem] border border-border/60 bg-surface/60 p-3.5 shadow-card">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">Simulace ústního zkoušení</p>
-            <h2 className="mt-3 font-serif text-4xl text-text-primary">Tahání otázek nanečisto</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-text-secondary">
-              Minimalistický režim: otázka, vlastní odpověď, odhalení modelové odpovědi a následné hodnocení.
+            <h2 className="font-serif text-[1.55rem] text-text-primary">Simulace zkoušky</h2>
+            <p className="mt-1 text-sm leading-6 text-text-secondary">
+              Minimalistický režim pro odpověď nanečisto.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleStartSession}
-            disabled={!filteredQuestions.length}
-            className="inline-flex items-center gap-2 rounded-full border border-accent/45 bg-accent/14 px-4 py-2 text-sm font-semibold text-text-primary transition hover:border-accent/70 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Play className="size-4" />
-            Spustit simulaci
-          </button>
+
+          <div className="text-sm text-text-secondary">
+            <div>{filteredQuestions.length} otázek v simulaci</div>
+            <div>{filters.sets.length === 1 ? getSetDisplayLabel(filters.sets[0] ?? '') : 'Smíšený výběr'}</div>
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <SetChooser
+            availableSets={filterOptions.sets}
+            selectedSet={selectedSet}
+            onSelect={(set) => setFilters({ sets: set ? [set] : [] })}
+          />
+
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+            <label className="min-w-[14rem] flex-1">
+              <span className="sr-only">Hledat</span>
+              <div className="flex items-center gap-3 rounded-2xl border border-border/50 bg-background/35 px-3 py-2.5">
+                <Search className="size-4 text-text-secondary" />
+                <input
+                  id="question-search"
+                  value={filters.search}
+                  onChange={(event) => setFilters({ search: event.target.value })}
+                  placeholder="Hledat otázku nebo pojem"
+                  className="w-full bg-transparent text-sm text-text-primary outline-none placeholder:text-text-secondary/80"
+                />
+              </div>
+            </label>
+
+            <label className="min-w-[14rem]">
+              <span className="sr-only">Kapitola</span>
+              <select
+                value={selectedChapter}
+                onChange={(event) =>
+                  setFilters({
+                    chapters: event.target.value ? [event.target.value] : [],
+                  })
+                }
+                className="h-11 w-full rounded-2xl border border-border/50 bg-background/35 px-3 text-sm text-text-primary outline-none transition focus:border-accent/45"
+              >
+                <option value="">Všechny kapitoly</option>
+                {filterOptions.chapters.map((chapter) => (
+                  <option key={chapter} value={chapter}>
+                    {chapter}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <button
+              type="button"
+              onClick={handleResetQuickFilters}
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-border/50 px-4 text-sm font-medium text-text-secondary transition hover:border-accent/40 hover:text-text-primary"
+            >
+              <X className="size-4" />
+              Vyčistit
+            </button>
+          </div>
         </div>
       </section>
 
       {session?.completedAt ? (
         <SessionSummary
           session={session}
-          questionPool={filteredQuestions}
+          questionPool={content.validQuestions}
           progress={progress}
           onRestart={handleStartSession}
           onClose={clearSession}
         />
       ) : (
-        <div className="grid gap-6 2xl:grid-cols-[22rem_minmax(0,1fr)_24rem] xl:grid-cols-[22rem_minmax(0,1fr)]">
-          <div className="space-y-6">
-            <QuestionFilters
-              filters={filters}
-              options={filterOptions}
-              onChange={setFilters}
-              onReset={resetFilters}
-              title="Rozsah simulace"
-              hint="Vyber sadu, kapitolu nebo kombinaci kapitol. Detail panel zůstává zavřený, dokud ho výslovně neotevřeš."
-            />
-            <section className="rounded-[2rem] border border-border/70 bg-surface/75 p-5 shadow-card">
-              <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.22em] text-text-secondary">
-                <Clock3 className="size-4" />
-                Časovač
-              </div>
-              <ExamTimer
-                key={`${currentQuestionId ?? 'empty'}-${session?.currentIndex ?? 0}-${settings.examTimerSeconds}`}
-                enabled={Boolean(session?.timerEnabled)}
-                initialSeconds={settings.examTimerSeconds}
-                paused={revealed}
-              />
-            </section>
+        <div
+          className={cn(
+            'grid gap-3 xl:min-h-0 xl:flex-1',
+            detailOpen
+              ? 'xl:grid-cols-[14.5rem_minmax(0,1fr)] 2xl:grid-cols-[14.5rem_minmax(0,1fr)_18rem]'
+              : 'xl:grid-cols-[14.5rem_minmax(0,1fr)]',
+          )}
+        >
+          <div className="xl:flex xl:min-h-0 xl:flex-col xl:gap-3">
+            {!session ? (
+              <section className="rounded-[1.35rem] border border-border/60 bg-surface/60 p-4 shadow-card">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-text-secondary">
+                      Připravit simulaci
+                    </p>
+                    <h3 className="mt-1 font-serif text-xl text-text-primary">Losování otázek</h3>
+                    <p className="mt-1 text-sm leading-6 text-text-secondary">
+                      {plannedSessionQuestionIds.length} otázek v připravené simulaci
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleStartSession}
+                    disabled={!plannedSessionQuestionIds.length}
+                    className="inline-flex items-center gap-2 rounded-full border border-accent/45 bg-accent/12 px-4 py-2 text-sm font-semibold text-text-primary transition hover:border-accent/70 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Play className="size-4" />
+                    Spustit simulaci
+                  </button>
+                </div>
+
+                <label className="mt-4 flex items-center gap-3 rounded-2xl border border-border/50 bg-background/25 px-3.5 py-3 text-sm text-text-primary">
+                  <input
+                    type="checkbox"
+                    checked={timerEnabled}
+                    onChange={(event) => setTimerEnabled(event.target.checked)}
+                    className="size-4 rounded border-border/60 bg-background/40 text-accent"
+                  />
+                  <span>
+                    Zapnout časovač ({Math.floor(settings.examTimerSeconds / 60)}:
+                    {String(settings.examTimerSeconds % 60).padStart(2, '0')}).
+                  </span>
+                </label>
+              </section>
+            ) : (
+              <section className="rounded-[1.35rem] border border-border/60 bg-surface/60 p-4 shadow-card">
+                <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.22em] text-text-secondary">
+                  <Clock3 className="size-4" />
+                  Časovač
+                </div>
+                <ExamTimer
+                  key={`${currentQuestionId ?? 'empty'}-${session.currentIndex}-${settings.examTimerSeconds}`}
+                  enabled={Boolean(session.timerEnabled)}
+                  initialSeconds={settings.examTimerSeconds}
+                  paused={revealed}
+                />
+              </section>
+            )}
           </div>
 
-          <div className="space-y-6">
-            <Flashcard
-              question={currentQuestion}
-              revealed={revealed}
-              animateFlip={settings.flipAnimation && !settings.reducedMotion}
-              onReveal={handleReveal}
-              minimal
-            />
-            <FlashcardControls
-              canGoBack={Boolean(session && session.currentIndex > 0)}
-              canGoForward={Boolean(session && session.currentIndex < session.questionIds.length - 1)}
-              revealed={revealed}
-              isFavorite={isFavorite}
-              onPrevious={moveSessionPrevious}
-              onNext={moveSessionNext}
-              onReveal={handleReveal}
-              onToggleDetail={() => setDetailOpen(true)}
-              onToggleFavorite={() => currentQuestion && toggleFavorite(currentQuestion.id)}
-              onRate={handleRate}
-              progressText={
-                session
-                  ? `Otázka ${session.currentIndex + 1} z ${session.questionIds.length}`
-                  : `${filteredQuestions.length} dostupných otázek`
-              }
-            />
-            <section className="rounded-[2rem] border border-border/70 bg-surface/75 p-5 shadow-card">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-text-secondary">
-                <TimerReset className="size-4" />
-                Režim
+          <div className="xl:min-h-0">
+            <div className="mx-auto flex h-full min-h-0 w-full max-w-[44rem] flex-col gap-3">
+              <FlashcardControls
+                canGoBack={Boolean(session && session.currentIndex > 0)}
+                canGoForward={Boolean(session ? session.questionIds.length > 0 : filteredQuestions.length)}
+                revealed={revealed}
+                onPrevious={handlePrevious}
+                onNext={handleNext}
+                onReveal={handleReveal}
+                onToggleDetail={() => currentQuestion && setDetailOpen(true)}
+                onRate={handleRate}
+                canReveal={Boolean(currentQuestion)}
+                caption={session ? 'Aktivní simulace' : 'Simulace'}
+                progressText={
+                  session
+                    ? `Otázka ${session.currentIndex + 1} z ${session.questionIds.length}`
+                    : `${filteredQuestions.length} dostupných otázek`
+                }
+              />
+
+              <div className="min-h-0 flex-1">
+                <div className="flex h-full min-h-0 items-start justify-center xl:items-start">
+                  <Flashcard
+                    question={currentQuestion}
+                    revealed={revealed}
+                    animateFlip={settings.flipAnimation && !settings.reducedMotion}
+                    onReveal={handleReveal}
+                    minimal
+                  />
+                </div>
               </div>
-              <p className="mt-3 text-sm leading-7 text-text-secondary">
-                Detailní panel není otevřený automaticky. Pokud chceš po odpovědi nahlédnout do osnovy nebo chytáků, otevři ho tlačítkem `Detail otázky`.
-              </p>
-            </section>
+            </div>
           </div>
 
           <DetailPanel
@@ -228,6 +379,7 @@ export function ExamView() {
             onClose={() => setDetailOpen(false)}
             onTabChange={setDetailTab}
             onNavigateToQuestion={selectQuestion}
+            contained
           />
         </div>
       )}
@@ -259,15 +411,17 @@ function ExamTimer({
   }, [enabled, paused])
 
   return (
-    <div className="mt-4 rounded-[1.5rem] border border-border/60 bg-background/25 p-5 text-center">
+    <div className="mt-4 rounded-[1.5rem] border border-border/50 bg-background/25 p-4 text-center">
       <div className="text-xs uppercase tracking-[0.16em] text-text-secondary">
         {enabled ? 'zbývající čas' : 'časovač vypnutý'}
       </div>
-      <div className="mt-3 font-serif text-5xl text-text-primary">
+      <div className="mt-2 font-serif text-5xl text-text-primary">
         {enabled ? `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}` : '--:--'}
       </div>
-      <div className="mt-3 text-sm text-text-secondary">
-        {secondsLeft === 0 && enabled ? 'Čas vypršel, můžeš odkryt odpověď.' : 'Po odhalení odpovědi se odpočet zastaví.'}
+      <div className="mt-2 text-sm text-text-secondary">
+        {secondsLeft === 0 && enabled
+          ? 'Čas vypršel, můžeš odkrýt odpověď.'
+          : 'Po odhalení odpovědi se odpočet zastaví.'}
       </div>
     </div>
   )

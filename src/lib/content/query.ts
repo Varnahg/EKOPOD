@@ -1,6 +1,6 @@
 import type { QuestionDocument, SummaryDocument } from '@/types/content'
 import type { ProgressEntry, QuestionFiltersState, QuestionSortMode } from '@/types/state'
-import { shuffle } from '@/lib/utils'
+import { compareNaturalText, shuffle } from '@/lib/utils'
 
 export function getProgressEntry(progress: Record<string, ProgressEntry>, questionId: string): ProgressEntry {
   return (
@@ -119,14 +119,18 @@ export function sortQuestions(
 
   return sorted.sort((left, right) => {
     if (left.set !== right.set) {
-      return left.set.localeCompare(right.set, 'cs')
+      return compareNaturalText(left.set, right.set)
     }
 
     if (left.chapter !== right.chapter) {
-      return left.chapter.localeCompare(right.chapter, 'cs')
+      return compareNaturalText(left.chapter, right.chapter)
     }
 
-    return left.order - right.order
+    if (left.order !== right.order) {
+      return left.order - right.order
+    }
+
+    return compareNaturalText(left.id, right.id)
   })
 }
 

@@ -32,10 +32,10 @@ export function SummaryReader({
   }
 
   return (
-    <section className="grid gap-6 xl:grid-cols-[17rem_minmax(0,1fr)_16rem]">
-      <aside className="rounded-[2rem] border border-border/70 bg-surface/75 p-4 shadow-card">
+    <section className="grid gap-4 xl:h-full xl:min-h-0 xl:grid-cols-[16rem_minmax(0,1fr)_14.5rem]">
+      <aside className="rounded-[2rem] border border-border/70 bg-surface/75 p-4 shadow-card xl:flex xl:min-h-0 xl:flex-col xl:overflow-hidden">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-text-secondary">AI souhrny</p>
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 space-y-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-1">
           {summaries.map((summary) => (
             <button
               key={summary.id}
@@ -57,8 +57,8 @@ export function SummaryReader({
         </div>
       </aside>
 
-      <article className="rounded-[2rem] border border-border/70 bg-surface/75 p-6 shadow-card md:p-8">
-        <div className="flex flex-wrap items-center gap-3">
+      <article className="rounded-[2rem] border border-border/70 bg-surface/75 p-6 shadow-card md:p-8 xl:flex xl:min-h-0 xl:flex-col">
+        <div className="shrink-0 flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
             <BookMarked className="size-4" />
             Čtecí režim
@@ -71,15 +71,15 @@ export function SummaryReader({
         {selectedSummary.description ? (
           <p className="mt-3 text-sm leading-7 text-text-secondary">{selectedSummary.description}</p>
         ) : null}
-        <div className="mt-8">
+        <div className="mt-8 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-2">
           <MarkdownRenderer markdown={selectedSummary.body} onNavigateToQuestion={onNavigateToQuestion} />
         </div>
       </article>
 
-      <aside className="hidden xl:block">
-        <div className="sticky top-24 rounded-[2rem] border border-border/70 bg-surface/75 p-4 shadow-card">
+      <aside className="hidden xl:block xl:min-h-0">
+        <div className="flex h-full min-h-0 flex-col rounded-[2rem] border border-border/70 bg-surface/75 p-4 shadow-card">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-text-secondary">Obsah</p>
-          <nav className="mt-4 space-y-2">
+          <nav className="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto">
             {selectedSummary.headings
               .filter((heading) => heading.depth <= 3)
               .map((heading) => (

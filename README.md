@@ -2,16 +2,14 @@
 
 Lokální frontend aplikace pro studium předmětu **EKOPOD** postavená na `React + TypeScript + Vite + Tailwind CSS`. Aplikace běží čistě na klientovi, bez backendu, bez databáze a bez přihlášení. Veškerý obsah se načítá z lokálních souborů ve složce [`content/`](./content).
 
-## Co aplikace umí
+Repo je teď připravený tak, že obsahuje:
 
-- `Flashcards / Potítko` pro aktivní vybavování odpovědi z hlavy
-- `Trénink chyb` nad otázkami s nízkou úrovní zvládnutí
-- `Simulace zkoušky` s minimalistickým režimem a časovačem
-- `Skripta PDF` s navigací po stránkách, zoomem a fit width
-- `AI souhrny` jako čtecí markdown režim se sticky obsahem
-- `Statistiky` po sadách i kapitolách
-- `Nastavení` včetně exportu/importu postupu do JSON
-- validaci frontmatteru a ochranu proti chybějícím souborům
+- reálné PDF skript `EKOPOD skripta 2024`
+- kompletně zpracovanou **sadu A**
+- `60` markdown otázek
+- `12` markdown souhrnů
+- validaci obsahu při načtení
+- základní testy parseru, UI flow a integrity obsahových souborů
 
 ## Spuštění
 
@@ -26,36 +24,61 @@ Produkční build:
 npm run build
 ```
 
+Náhled produkčního buildu:
+
+```bash
+npm run preview
+```
+
 Testy:
 
 ```bash
 npm run test
 ```
 
-## Obsahová struktura
+Lint:
+
+```bash
+npm run lint
+```
+
+## Aktuální obsah projektu
 
 ```text
 content/
   pdf/
-    ekopod-skripta-sample.pdf
+    ekopod-skripta-2024.pdf
   questions/
     set-a/
-      010--naklady-a-cleneni.md
-      020--bod-zvratu.md
-    set-b/
-      010--pracovni-pomer.md
-    set-c/
-      010--cash-flow.md
+      0101--predmet-podnikove-ekonomiky.md
+      0102--podnik-zavod-a-podnikani.md
+      ...
+      1205--vahy-a-vicekriterialni-hodnoceni.md
   summaries/
-    010--naklady.md
-    020--pracovni-pravo.md
+    001--podnikova-ekonomika-a-podnik.md
+    002--dlouhodoby-majetek-a-odepisovani.md
+    ...
+    012--metody-mezipodnikoveho-srovnavani.md
 ```
 
-Veškeré cesty k obsahu jsou centralizované v [`src/lib/content/paths.ts`](./src/lib/content/paths.ts). Loader a validace jsou v:
+V projektu je teď cíleně pouze `set-a`. Sady `B` a `C` můžeš doplnit později stejnou strukturou, bez zásahu do kódu aplikace.
 
-- [`src/lib/content/loader.ts`](./src/lib/content/loader.ts)
-- [`src/lib/content/parser.ts`](./src/lib/content/parser.ts)
-- [`src/lib/content/validator.ts`](./src/lib/content/validator.ts)
+## Ověřená struktura předmětu
+
+Sada A je připravená nad těmito 12 kapitolami skript:
+
+1. Podniková ekonomika, podnik, klasifikace podniků
+2. Dlouhodobý majetek a jeho odepisování
+3. Oběžný majetek (pracovní kapitál)
+4. Kapitál podniku – pasiva
+5. Investice a jejich hodnocení
+6. Náklady podniku
+7. Kalkulace nákladů
+8. Zisk, výnosy a výkony
+9. Cash flow – peněžní tok v podniku
+10. Finanční analýza
+11. Zakladatelský rozpočet, mimořádné financování
+12. Metody mezipodnikového srovnávání
 
 ## Naming convention
 
@@ -65,6 +88,12 @@ Souborové názvy nejsou jediným zdrojem pravdy, ale doporučená konvence je:
 - souhrny: `content/summaries/<order>--<slug>.md`
 - PDF: `content/pdf/<nazev>.pdf`
 
+Příklady:
+
+- `content/questions/set-a/0603--druhove-cleneni-nakladu.md`
+- `content/summaries/006--naklady-podniku.md`
+- `content/pdf/ekopod-skripta-2024.pdf`
+
 Klíčové je, aby metadata ve frontmatteru odpovídala skutečnému obsahu.
 
 ## Formát otázky
@@ -73,23 +102,23 @@ Každá otázka je markdown s frontmatterem a sekcemi `##`.
 
 ```md
 ---
-id: ekopod-a-010
-set: A
-chapter: Náklady a výnosy
-subchapter: Členění nákladů
-title: Jak členíme náklady?
-order: 10
+id: "ekopod-a-0101"
+set: "A"
+chapter: "1. Podniková ekonomika, podnik, klasifikace podniků"
+subchapter: "1.1 Předmět podnikové ekonomiky"
+title: "Co zkoumá podniková ekonomika a proč je pro podnik praktická?"
+order: 101
 tags:
-  - naklady
-  - rizeni
-difficulty: 2
-sourcePdfPath: pdf/ekopod-skripta-sample.pdf
+  - "podniková-ekonomika"
+  - "podnik"
+  - "řízení"
+difficulty: 1
+sourcePdfPath: "pdf/ekopod-skripta-2024.pdf"
 sourcePages:
-  - 2
-  - 3
+  - 9
 sourceSections:
   - "1.1"
-summaryId: shr-naklady
+summaryId: "shr-ekopod-a-01"
 ---
 ## Otázka
 ...
@@ -149,83 +178,83 @@ summaryId: shr-naklady
 
 ```md
 ---
-id: shr-naklady
-title: AI souhrn k nákladům
-chapter: Náklady a výnosy
-order: 10
+id: "shr-ekopod-a-01"
+title: "Sada A · Kapitola 01"
+chapter: "1. Podniková ekonomika, podnik, klasifikace podniků"
+order: 100
 tags:
-  - naklady
+  - "podnik"
+  - "podniková-ekonomika"
 relatedQuestionIds:
-  - ekopod-a-010
-description: Krátký čtecí tahák.
+  - "ekopod-a-0101"
+  - "ekopod-a-0102"
+description: "Přehledová osa první kapitoly pro sadu A."
 ---
-# Hlavní nadpis
+# Sada A · Kapitola 01
+
 ...
 ```
 
-## Chování při chybě obsahu
+## Centralizace cest a validace
 
-Aplikace se při chybějícím nebo nevalidním obsahu nesmí rozpadnout.
+Veškeré root cesty k obsahu jsou centralizované v [`src/lib/content/paths.ts`](./src/lib/content/paths.ts).
 
-- chybějící PDF zobrazí čitelné upozornění a fallback režim
-- nevalidní frontmatter označí otázku jako nevalidní v UI
+Loader a validace jsou v:
+
+- [`src/lib/content/loader.ts`](./src/lib/content/loader.ts)
+- [`src/lib/content/parser.ts`](./src/lib/content/parser.ts)
+- [`src/lib/content/validator.ts`](./src/lib/content/validator.ts)
+
+Aplikace se při chybějícím nebo nevalidním obsahu nerozpadne:
+
+- chybějící PDF zobrazí čitelné upozornění a fallback
+- nevalidní frontmatter označí otázku nebo souhrn jako nevalidní
 - detail problému vypíše do vývojové konzole
 - prázdná sada nebo kapitola zobrazí bezpečný empty state
-- poškozený lokální progress se automaticky resetuje a uživatel dostane upozornění
+- poškozený lokální progress se resetuje do použitelného stavu
 
-## Klávesové zkratky
+## Jak doplnit vlastní obsah
 
-- `Space` / `Enter`: odhalit odpověď
-- `0 / 1 / 2 / 3`: ohodnotit zvládnutí
-- `← / →`: předchozí / další
-- `D`: otevřít nebo zavřít detail
-- `F`: označit oblíbené
-- `Esc`: zavřít detail
-- `/`: fokus na search input
+1. Nahraj PDF do `content/pdf`.
+2. Přidej markdown otázky do `content/questions/<set>/`.
+3. Přidej markdown souhrny do `content/summaries/`.
+4. Dodrž frontmatter a názvy sekcí.
+5. Restartuj `npm run dev`, pokud přidáváš nové soubory za běhu Vite.
 
-## Lokální data
+Názvy kapitol, sad, tagů ani summary vazby nejsou hardcoded v komponentách. UI se opírá o metadata načtená z obsahu.
 
-Do `localStorage` se ukládá:
+## Generování sady A
 
-- průběžná úroveň zvládnutí po otázkách
-- historie hodnocení
-- oblíbené
-- aktivní session
-- nastavení UI
+V repo je pomocný skript:
 
-Export a import snapshotu je v sekci `Nastavení`.
+```bash
+python scripts/generate_set_a_content.py
+```
+
+Ten znovu vygeneruje:
+
+- `content/questions/set-a`
+- `content/summaries`
+
+Skript předpokládá, že PDF `ekopod-skripta-2024.pdf` už leží v `content/pdf`.
 
 ## Testy
 
 Základní test suite pokrývá:
 
 - parser a validaci obsahu
-- základní flashcard flow: otázka -> odhalení odpovědi -> hodnocení
-
-## Důležité poznámky pro doplnění vlastního obsahu
-
-- Markdown soubory přidávej pouze do `content/questions` a `content/summaries`.
-- PDF dej do `content/pdf`.
-- Pokud přidáš nový obsah za běhu dev serveru, je bezpečné server restartovat, aby Vite znovu načetl glob importy.
-- Názvy kapitol, sad, tagů ani summary vztahy nejsou hardcoded v komponentách; vše se čte z obsahu.
+- základní flashcard flow
+- validitu markdown souborů v `content/questions` a `content/summaries`
 
 ## Hlavní adresáře v kódu
 
 - [`src/components`](./src/components): UI komponenty
-- [`src/routes`](./src/routes): jednotlivé režimy aplikace
+- [`src/routes`](./src/routes): hlavní režimy aplikace
 - [`src/store`](./src/store): lokální persistovaný store
 - [`src/lib/content`](./src/lib/content): loader, parser, validace, session logika
 - [`src/providers`](./src/providers): content provider
 - [`src/types`](./src/types): datové typy
 
-## Stav projektu
+## Poznámka
 
-Repo obsahuje:
-
-- kompletní spustitelný frontend
-- sample markdown content
-- sample PDF
-- základní testy
-- README s konvencemi
-
-Stačí doplnit nebo nahradit obsah ve složce `content/` a spustit `npm run dev`.
+Repo je připravený tak, aby šlo obsah měnit bez zásahu do kódu. Pro aktuální stav je hotová pouze **sada A**; další sady můžeš doplnit stejným formátem.

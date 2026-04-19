@@ -53,6 +53,8 @@ export interface SessionState {
   id: string
   mode: Extract<AppMode, 'flashcards' | 'mistakes' | 'exam'>
   sourceLabel: string
+  allQuestionIds: string[]
+  requestedCount: number
   questionIds: string[]
   currentIndex: number
   revealed: boolean

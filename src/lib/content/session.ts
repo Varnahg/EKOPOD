@@ -3,14 +3,6 @@ import type { ProgressEntry, QuestionSortMode, SessionState } from '@/types/stat
 import { createId, shuffle } from '@/lib/utils'
 import { getProgressEntry, getLastRating, sortQuestions } from '@/lib/content/query'
 
-function getWeight(mastery: MasteryLevel | null) {
-  if (mastery === null) {
-    return 4
-  }
-
-  return [4, 3, 2, 1][mastery]
-}
-
 export function buildSessionQuestionIds(
   questions: QuestionDocument[],
   progress: Record<string, ProgressEntry>,
@@ -36,13 +28,7 @@ export function buildSessionQuestionIds(
       .map((question) => question.id)
   }
 
-  const ordered = sortQuestions(questions, sortMode, progress)
-  const weightedIds = ordered.flatMap((question) => {
-    const mastery = getProgressEntry(progress, question.id).mastery
-    return Array.from({ length: getWeight(mastery) }, () => question.id)
-  })
-
-  return shuffle(weightedIds)
+  return sortQuestions(questions, sortMode, progress).map((question) => question.id)
 }
 
 export function createSession(input: {
@@ -58,6 +44,8 @@ export function createSession(input: {
     id: createId(input.mode),
     mode: input.mode,
     sourceLabel: input.sourceLabel,
+    allQuestionIds: [...new Set(input.questionIds)],
+    requestedCount: input.questionIds.length,
     questionIds: input.questionIds,
     currentIndex: 0,
     revealed: false,

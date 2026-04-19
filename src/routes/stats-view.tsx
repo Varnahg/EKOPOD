@@ -7,7 +7,7 @@ export function StatsView() {
   const progress = useAppStore((state) => state.progress)
 
   return (
-    <section className="space-y-4">
+    <section className="h-full space-y-4 overflow-y-auto pr-1">
       <div className="rounded-[2rem] border border-border/70 bg-surface/75 p-5 shadow-card">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">Statistiky</p>
         <h2 className="mt-3 font-serif text-4xl text-text-primary">Přehled postupu učením</h2>

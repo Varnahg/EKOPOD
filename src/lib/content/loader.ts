@@ -1,20 +1,21 @@
 import { parseQuestionFile, parseSummaryFile } from '@/lib/content/parser'
-import { CONTENT_GLOBS, stripContentRoot } from '@/lib/content/paths'
+import { stripContentRoot } from '@/lib/content/paths'
 import type { ContentIndex, ContentWarning, PdfDocument } from '@/types/content'
 
-const questionModules = import.meta.glob(CONTENT_GLOBS.questions, {
+// Vite requires literal glob strings here; imported constants are rejected at parse time.
+const questionModules = import.meta.glob('/content/questions/**/*.md', {
   eager: true,
   import: 'default',
   query: '?raw',
 }) as Record<string, string>
 
-const summaryModules = import.meta.glob(CONTENT_GLOBS.summaries, {
+const summaryModules = import.meta.glob('/content/summaries/**/*.md', {
   eager: true,
   import: 'default',
   query: '?raw',
 }) as Record<string, string>
 
-const pdfModules = import.meta.glob(CONTENT_GLOBS.pdfs, {
+const pdfModules = import.meta.glob('/content/pdf/**/*.pdf', {
   eager: true,
   import: 'default',
 }) as Record<string, string>

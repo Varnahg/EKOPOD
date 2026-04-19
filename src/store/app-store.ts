@@ -35,6 +35,8 @@ interface AppStore extends StoredProgressState {
   hideAnswer: () => void
   startSession: (session: SessionState) => void
   clearSession: () => void
+  completeSession: () => void
+  advanceSession: (questionPool: QuestionDocument[]) => void
   moveSessionNext: () => void
   moveSessionPrevious: () => void
   rateCurrentQuestion: (rating: MasteryLevel, questionPool: QuestionDocument[]) => void
@@ -134,6 +136,58 @@ export const useAppStore = create<AppStore>()(
         activeSession: null,
         selectedQuestionId: state.selectedQuestionId,
       })),
+    completeSession: () =>
+      set((state) => {
+        if (!state.activeSession) {
+          return state
+        }
+
+        return {
+          activeSession: {
+            ...state.activeSession,
+            completedAt: new Date().toISOString(),
+          },
+        }
+      }),
+    advanceSession: (questionPool) =>
+      set((state) => {
+        const session = state.activeSession
+
+        if (!session) {
+          return state
+        }
+
+        const allQuestionIds = session.allQuestionIds.length ? session.allQuestionIds : [...new Set(session.questionIds)]
+
+        if (shouldRepeatSession(session, state.progress, allQuestionIds)) {
+          const repeatQueue = buildRepeatQueue(
+            session,
+            state.progress,
+            questionPool.filter((question) => allQuestionIds.includes(question.id)),
+          )
+
+          if (repeatQueue.length) {
+            return {
+              activeSession: {
+                ...session,
+                questionIds: repeatQueue,
+                currentIndex: 0,
+                revealed: false,
+                round: session.round + 1,
+              },
+              selectedQuestionId: repeatQueue[0] ?? state.selectedQuestionId,
+            }
+          }
+        }
+
+        return {
+          activeSession: {
+            ...session,
+            completedAt: new Date().toISOString(),
+            revealed: false,
+          },
+        }
+      }),
     moveSessionNext: () =>
       set((state) => {
         if (!state.activeSession) {
@@ -170,7 +224,7 @@ export const useAppStore = create<AppStore>()(
           selectedQuestionId: previousQuestionId ?? null,
         }
       }),
-    rateCurrentQuestion: (rating, questionPool) =>
+    rateCurrentQuestion: (rating) =>
       set((state) => {
         const session = state.activeSession
         const questionId = getCurrentQuestionId(session) ?? state.selectedQuestionId
@@ -208,61 +262,21 @@ export const useAppStore = create<AppStore>()(
           }
         }
 
-        const nextRatings = {
-          ...session.ratings,
-          [questionId]: [...(session.ratings[questionId] ?? []), rating],
-        }
-        const uniqueQuestionIds = [...new Set(session.questionIds)]
-        const atLastQuestion = session.currentIndex >= session.questionIds.length - 1
-
-        if (atLastQuestion) {
-          if (shouldRepeatSession({ ...session, ratings: nextRatings }, nextProgress, uniqueQuestionIds)) {
-            const repeatQueue = buildRepeatQueue(
-              { ...session, ratings: nextRatings },
-              nextProgress,
-              questionPool.filter((question) => uniqueQuestionIds.includes(question.id)),
-            )
-
-            if (repeatQueue.length) {
-              return {
-                progress: nextProgress,
-                activeSession: {
-                  ...session,
-                  ratings: nextRatings,
-                  questionIds: repeatQueue,
-                  currentIndex: 0,
-                  revealed: false,
-                  round: session.round + 1,
-                },
-                selectedQuestionId: repeatQueue[0] ?? questionId,
-              }
-            }
-          }
-
-          return {
-            progress: nextProgress,
-            activeSession: {
-              ...session,
-              ratings: nextRatings,
-              completedAt: timestamp,
-              revealed: true,
-            },
-            selectedQuestionId: questionId,
-          }
-        }
-
-        const nextIndex = session.currentIndex + 1
-        const nextQuestionId = session.questionIds[nextIndex] ?? questionId
+        const currentRoundIndex = Math.max(session.round - 1, 0)
+        const existingRatings = session.ratings[questionId] ?? []
+        const nextQuestionRatings = [...existingRatings]
+        nextQuestionRatings[currentRoundIndex] = rating
 
         return {
           progress: nextProgress,
           activeSession: {
             ...session,
-            ratings: nextRatings,
-            currentIndex: nextIndex,
-            revealed: false,
+            ratings: {
+              ...session.ratings,
+              [questionId]: nextQuestionRatings,
+            },
           },
-          selectedQuestionId: nextQuestionId,
+          selectedQuestionId: questionId,
         }
       }),
     importSnapshot: (snapshot) =>

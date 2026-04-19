@@ -37,6 +37,8 @@ const sessionSchema = z.object({
   id: z.string(),
   mode: z.enum(['flashcards', 'mistakes', 'exam']),
   sourceLabel: z.string(),
+  allQuestionIds: z.array(z.string()).optional(),
+  requestedCount: z.number().int().positive().optional(),
   questionIds: z.array(z.string()),
   currentIndex: z.number().int().nonnegative(),
   revealed: z.boolean(),
@@ -103,7 +105,21 @@ export function createDefaultStoredState(): StoredProgressState {
     activeSession: null,
     selectedQuestionId: null,
     detailTab: 'modelAnswer',
-    detailOpen: true,
+    detailOpen: false,
+  }
+}
+
+function normalizeSessionState(session: z.infer<typeof sessionSchema> | null): StoredProgressState['activeSession'] {
+  if (!session) {
+    return null
+  }
+
+  const allQuestionIds = session.allQuestionIds?.length ? session.allQuestionIds : session.questionIds
+
+  return {
+    ...session,
+    allQuestionIds,
+    requestedCount: session.requestedCount ?? allQuestionIds.length,
   }
 }
 
@@ -135,6 +151,7 @@ export function readPersistedState() {
       state: {
         ...fallback,
         ...result.data,
+        activeSession: normalizeSessionState(result.data.activeSession),
         version: STORAGE_VERSION,
       },
       error: null as string | null,
@@ -170,6 +187,7 @@ export function parseImportedSnapshot(raw: string) {
 
   return {
     ...result.data,
+    activeSession: normalizeSessionState(result.data.activeSession),
     version: STORAGE_VERSION,
   } satisfies StoredProgressState
 }

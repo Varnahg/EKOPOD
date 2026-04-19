@@ -2,6 +2,10 @@ import { clsx } from 'clsx'
 import GithubSlugger from 'github-slugger'
 
 const slugger = new GithubSlugger()
+const csNaturalCollator = new Intl.Collator('cs', {
+  numeric: true,
+  sensitivity: 'base',
+})
 
 export function cn(...values: Array<string | false | null | undefined>) {
   return clsx(values)
@@ -46,7 +50,11 @@ export function unique<T>(items: T[]) {
 }
 
 export function sortText(values: string[]) {
-  return [...values].sort((left, right) => left.localeCompare(right, 'cs'))
+  return [...values].sort(compareNaturalText)
+}
+
+export function compareNaturalText(left: string, right: string) {
+  return csNaturalCollator.compare(left, right)
 }
 
 export function shuffle<T>(values: T[]) {
