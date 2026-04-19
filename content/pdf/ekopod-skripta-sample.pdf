@@ -1,0 +1,78 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 3 /Kids [3 0 R 5 0 R 7 0 R] >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 9 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 259 >>
+stream
+BT
+/F1 24 Tf
+72 770 Td
+(EKOPOD sample skripta) Tj
+/F1 12 Tf
+0 -28 Td (1. Naklady a vynosy) Tj
+0 -28 Td (Zakladni cleneni nakladu: druhove, ucelove, fixni a variabilni.) Tj
+0 -28 Td (Tento vzorovy PDF soubor slouzi jen pro otestovani vieweru v aplikaci.) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 9 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 268 >>
+stream
+BT
+/F1 24 Tf
+72 770 Td
+(2. Pracovni pravo) Tj
+/F1 12 Tf
+0 -28 Td (Pracovni pomer vznika zpravidla pracovnim smlouvou.) Tj
+0 -28 Td (Povinne nalezitosti: druh prace, misto vykonu, den nastupu.) Tj
+0 -28 Td (Mzda, plat a odmena z dohody maji odlisny pravni rezim.) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 9 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 256 >>
+stream
+BT
+/F1 24 Tf
+72 770 Td
+(3. Financni analyza) Tj
+/F1 12 Tf
+0 -28 Td (Cash flow sleduje realny pohyb penez.) Tj
+0 -28 Td (Podnik muze byt ucetne ziskovy a presto mit problem s likviditou.) Tj
+0 -28 Td (Viewer ma umet prepinat strany, zoom a fit width.) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000127 00000 n 
+0000000253 00000 n 
+0000000563 00000 n 
+0000000689 00000 n 
+0000001008 00000 n 
+0000001134 00000 n 
+0000001441 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R >>
+startxref
+1511
+%%EOF

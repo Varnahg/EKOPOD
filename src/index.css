@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --color-background: 11 15 24;
+    --color-surface: 20 28 39;
+    --color-paper: 230 223 209;
+    --color-text-primary: 235 241 248;
+    --color-text-secondary: 159 170 188;
+    --color-text-ink: 34 30 26;
+    --color-border: 67 78 96;
+    --color-primary-accent: 89 160 255;
+    --color-success: 74 222 128;
+    --color-error: 248 113 113;
+    --color-warning: 245 158 11;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    background: rgb(var(--color-background));
+    color: rgb(var(--color-text-primary));
+    font-family: Manrope, ui-sans-serif, sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  ::selection {
+    background: rgb(var(--color-primary-accent) / 0.32);
+    color: rgb(var(--color-text-primary));
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--color-primary-accent));
+    outline-offset: 2px;
+  }
+
+  a {
+    color: inherit;
+  }
+}
+
+@layer utilities {
+  .card-face {
+    backface-visibility: hidden;
+  }
+
+  .card-back {
+    position: absolute;
+    inset: 0;
+    transform: rotateY(180deg);
+  }
+
+  .anchor-link {
+    text-decoration: none;
+  }
+
+  .anchor-link::after {
+    content: ' #';
+    opacity: 0.35;
+    font-size: 0.85em;
+  }
+
+  .anchor-link:hover::after {
+    opacity: 0.8;
+  }
+}
+
+body::-webkit-scrollbar,
+[data-radix-scroll-area-viewport]::-webkit-scrollbar,
+div::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+body::-webkit-scrollbar-track,
+[data-radix-scroll-area-viewport]::-webkit-scrollbar-track,
+div::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body::-webkit-scrollbar-thumb,
+[data-radix-scroll-area-viewport]::-webkit-scrollbar-thumb,
+div::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(var(--color-border) / 0.65);
+}
