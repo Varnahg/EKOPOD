@@ -3,11 +3,11 @@ import { Clock3, Play, Search, X } from 'lucide-react'
 
 import { DetailPanel } from '@/components/detail-panel'
 import { Flashcard } from '@/components/flashcard'
-import { FlashcardControls } from '@/components/flashcard-controls'
+import { FlashcardControls, type FlashcardQuestionIndicator } from '@/components/flashcard-controls'
 import { SetChooser } from '@/components/set-chooser'
 import { SessionSummary } from '@/components/session-summary'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
-import { filterQuestions } from '@/lib/content/query'
+import { filterQuestions, getProgressEntry } from '@/lib/content/query'
 import { buildSessionQuestionIds, createSession } from '@/lib/content/session'
 import { DEFAULT_FILTERS } from '@/lib/progress'
 import { getSetDisplayLabel } from '@/lib/theme'
@@ -50,7 +50,7 @@ export function ExamView() {
 
   const session = activeSession?.mode === 'exam' ? activeSession : null
   const filterOptions = useMemo(() => createFilterOptions(content.validQuestions), [content.validQuestions])
-  const selectedSet = filters.sets.length === 1 ? filters.sets[0] : null
+  const selectedSets = filters.sets
   const selectedChapter = filters.chapters[0] ?? ''
 
   const simplifiedFilters = useMemo(
@@ -83,6 +83,31 @@ export function ExamView() {
   const relatedPdf = currentQuestion
     ? content.pdfMap[currentQuestion.source.pdfPath] ?? content.primaryPdf
     : content.primaryPdf
+  const currentProgressEntry = currentQuestion ? getProgressEntry(progress, currentQuestion.id) : null
+  const currentSessionRating =
+    session && currentQuestionId
+      ? session.ratings[currentQuestionId]?.[Math.max(session.round - 1, 0)] ?? null
+      : null
+  const effectiveCurrentRating = currentSessionRating ?? currentProgressEntry?.mastery ?? null
+  const questionIndicators = useMemo<FlashcardQuestionIndicator[]>(() => {
+    const questionIds = session ? session.questionIds : filteredQuestions.map((question) => question.id)
+    const currentRoundIndex = session ? Math.max(session.round - 1, 0) : 0
+
+    return questionIds.map((questionId, index) => {
+      const question = content.questionMap[questionId]
+      const storedMastery = getProgressEntry(progress, questionId).mastery
+      const sessionRating = session ? session.ratings[questionId]?.[currentRoundIndex] ?? null : null
+
+      return {
+        id: questionId,
+        label: String(index + 1),
+        rating: sessionRating ?? storedMastery,
+        title: question ? `${index + 1}. ${question.title}` : `Otázka ${index + 1}`,
+        active: questionId === currentQuestionId,
+        disabled: Boolean(session),
+      }
+    })
+  }, [content.questionMap, currentQuestionId, filteredQuestions, progress, session])
   const revealed = session
     ? session.revealed || Boolean(session.completedAt)
     : Boolean(currentQuestionId && revealedQuestionId === currentQuestionId)
@@ -139,6 +164,16 @@ export function ExamView() {
     setRevealedQuestionId((current) => (current === currentQuestionId ? null : currentQuestionId))
   }
 
+  const handleSelectQuestion = (questionId: string) => {
+    if (session) {
+      return
+    }
+
+    selectQuestion(questionId)
+    setRevealedQuestionId(null)
+    setDetailOpen(false)
+  }
+
   const handleRate = (rating: MasteryLevel) => {
     rateCurrentQuestion(rating, filteredQuestions)
     setDetailOpen(false)
@@ -184,6 +219,8 @@ export function ExamView() {
     })
   }
 
+  const quickRateHandler = currentQuestion ? handleRate : undefined
+
   useKeyboardShortcuts(settings.keyboardShortcuts, {
     onReveal: handleReveal,
     onPrevious: handlePrevious,
@@ -191,7 +228,7 @@ export function ExamView() {
     onToggleDetail: () => currentQuestion && setDetailOpen(!detailOpen),
     onClose: () => setDetailOpen(false),
     onFocusSearch: () => document.getElementById('question-search')?.focus(),
-    onRate: revealed ? handleRate : undefined,
+    onRate: quickRateHandler,
   })
 
   return (
@@ -214,8 +251,8 @@ export function ExamView() {
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <SetChooser
             availableSets={filterOptions.sets}
-            selectedSet={selectedSet}
-            onSelect={(set) => setFilters({ sets: set ? [set] : [] })}
+            selectedSets={selectedSets}
+            onChange={(sets) => setFilters({ sets })}
           />
 
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
@@ -346,7 +383,8 @@ export function ExamView() {
                 onNext={handleNext}
                 onReveal={handleReveal}
                 onToggleDetail={() => currentQuestion && setDetailOpen(true)}
-                onRate={handleRate}
+                onRate={quickRateHandler}
+                currentRating={effectiveCurrentRating}
                 canReveal={Boolean(currentQuestion)}
                 caption={session ? 'Aktivní simulace' : 'Simulace'}
                 progressText={
@@ -354,6 +392,8 @@ export function ExamView() {
                     ? `Otázka ${session.currentIndex + 1} z ${session.questionIds.length}`
                     : `${filteredQuestions.length} dostupných otázek`
                 }
+                questionIndicators={questionIndicators}
+                onSelectQuestionIndicator={session ? undefined : handleSelectQuestion}
               />
 
               <div className="min-h-0 flex-1">

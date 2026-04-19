@@ -50,7 +50,6 @@ interface StudySidebarPanelProps {
   onRequestEndSession: () => void
   currentMastery: MasteryLevel | null
   currentSessionRating: MasteryLevel | null
-  revealed: boolean
   onRate: (rating: MasteryLevel) => void
   canGoBack: boolean
   canGoForward: boolean
@@ -132,13 +131,13 @@ export function StudySidebarPanel({
   onRequestEndSession,
   currentMastery,
   currentSessionRating,
-  revealed,
   onRate,
   canGoBack,
   canGoForward,
   onPrevious,
   onNext,
 }: StudySidebarPanelProps) {
+  const displayedRating = currentSessionRating ?? currentMastery
   const detailMarkdown = useMemo(() => {
     if (!question) {
       return ''
@@ -396,11 +395,11 @@ export function StudySidebarPanel({
                     {question.title}
                   </div>
 
-                  {revealed ? (
+                  {question ? (
                     <div className="mt-4 grid gap-2">
                       {([0, 1, 2, 3] as const).map((key) => {
                         const meta = RATING_META[key]
-                        const isSelected = currentSessionRating === key
+                        const isSelected = displayedRating === key
 
                         return (
                           <button

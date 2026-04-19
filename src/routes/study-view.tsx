@@ -3,7 +3,11 @@ import { Check, ChevronDown, Play, Search, X } from 'lucide-react'
 
 import { DetailPanel } from '@/components/detail-panel'
 import { Flashcard } from '@/components/flashcard'
-import { FlashcardControls } from '@/components/flashcard-controls'
+import {
+  FlashcardControls,
+  FlashcardQuestionIndicatorStrip,
+  type FlashcardQuestionIndicator,
+} from '@/components/flashcard-controls'
 import { QuestionList } from '@/components/question-list'
 import { SetChooser } from '@/components/set-chooser'
 import { SessionSummary } from '@/components/session-summary'
@@ -38,6 +42,10 @@ const RATING_FILTER_LEVELS: MasteryLevel[] = [0, 1, 2, 3]
 function deriveSourceLabel(filters: ReturnType<typeof useAppStore.getState>['filters']) {
   if (filters.sets.length === 1 && !filters.chapters.length) {
     return getSetDisplayLabel(filters.sets[0] ?? '')
+  }
+
+  if (filters.sets.length > 1 && !filters.chapters.length) {
+    return `Sady: ${filters.sets.join(' + ')}`
   }
 
   if (filters.chapters.length === 1) {
@@ -277,7 +285,7 @@ export function StudyView({ mode, title, description }: StudyViewProps) {
   }, [content.questions, content.validQuestions, mode, progress])
 
   const filterOptions = useMemo(() => createFilterOptions(baseQuestions), [baseQuestions])
-  const selectedSet = filters.sets.length === 1 ? filters.sets[0] : null
+  const selectedSets = filters.sets
   const selectedChapter = filters.chapters[0] ?? ''
 
   const simplifiedFilters = useMemo(
@@ -341,6 +349,26 @@ export function StudyView({ mode, title, description }: StudyViewProps) {
     session && currentQuestionId
       ? session.ratings[currentQuestionId]?.[Math.max(session.round - 1, 0)] ?? null
       : null
+  const effectiveCurrentRating = currentSessionRating ?? currentProgressEntry?.mastery ?? null
+  const questionIndicators = useMemo<FlashcardQuestionIndicator[]>(() => {
+    const questionIds = session ? session.questionIds : filteredQuestions.map((question) => question.id)
+    const currentRoundIndex = session ? Math.max(session.round - 1, 0) : 0
+
+    return questionIds.map((questionId, index) => {
+      const question = content.questionMap[questionId]
+      const storedMastery = getProgressEntry(progress, questionId).mastery
+      const sessionRating = session ? session.ratings[questionId]?.[currentRoundIndex] ?? null : null
+
+      return {
+        id: questionId,
+        label: String(index + 1),
+        rating: sessionRating ?? storedMastery,
+        title: question ? `${index + 1}. ${question.title}` : `Otázka ${index + 1}`,
+        active: questionId === currentQuestionId,
+        disabled: Boolean(session),
+      }
+    })
+  }, [content.questionMap, currentQuestionId, filteredQuestions, progress, session])
 
   const mobileDetailVisible = detailOpen && Boolean(currentQuestion)
 
@@ -525,6 +553,9 @@ export function StudyView({ mode, title, description }: StudyViewProps) {
     })
   }
 
+  const canQuickRate = Boolean(currentQuestion && currentQuestion.valid && !unknownQuestionId)
+  const quickRateHandler = canQuickRate ? handleRate : undefined
+
   useKeyboardShortcuts(settings.keyboardShortcuts, {
     onReveal: handleReveal,
     onPrevious: handlePrevious,
@@ -542,7 +573,7 @@ export function StudyView({ mode, title, description }: StudyViewProps) {
       }
     },
     onFocusSearch: () => document.getElementById('question-search')?.focus(),
-    onRate: revealed ? handleRate : undefined,
+    onRate: quickRateHandler,
   })
 
   const renderMobileSessionCard = () => (
@@ -658,12 +689,7 @@ export function StudyView({ mode, title, description }: StudyViewProps) {
   )
 
   return (
-    <div
-      className={cn(
-        'space-y-3',
-        !session?.completedAt && 'xl:flex xl:h-full xl:min-h-0 xl:flex-col xl:space-y-3',
-      )}
-    >
+    <div className="space-y-3 xl:flex xl:h-full xl:min-h-0 xl:flex-col xl:space-y-3">
       <section className="rounded-[1.35rem] border border-border/60 bg-surface/60 p-3.5 shadow-card">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -680,8 +706,8 @@ export function StudyView({ mode, title, description }: StudyViewProps) {
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <SetChooser
             availableSets={filterOptions.sets}
-            selectedSet={selectedSet}
-            onSelect={(set) => setFilters({ sets: set ? [set] : [] })}
+            selectedSets={selectedSets}
+            onChange={(sets) => setFilters({ sets })}
           />
 
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
@@ -734,6 +760,15 @@ export function StudyView({ mode, title, description }: StudyViewProps) {
             </button>
           </div>
         </div>
+
+        {questionIndicators.length ? (
+          <div className="mt-3">
+            <FlashcardQuestionIndicatorStrip
+              questionIndicators={questionIndicators}
+              onSelectQuestionIndicator={session ? undefined : handleSelectQuestion}
+            />
+          </div>
+        ) : null}
       </section>
 
       {session?.completedAt ? (
@@ -775,8 +810,8 @@ export function StudyView({ mode, title, description }: StudyViewProps) {
                 isDesktopLayout && 'justify-center',
               )}
             >
-              {!isDesktopLayout ? (
-                <div className="w-full max-w-[46rem]">
+              {isDesktopLayout ? (
+                <div className="hidden">
                   <FlashcardControls
                     canGoBack={canGoBack}
                     canGoForward={session ? session.questionIds.length > 0 : canGoForward}
@@ -784,6 +819,8 @@ export function StudyView({ mode, title, description }: StudyViewProps) {
                     onNext={handleNext}
                     onReveal={handleReveal}
                     onToggleDetail={handleOpenDetail}
+                    onRate={quickRateHandler}
+                    currentRating={effectiveCurrentRating}
                     canReveal={Boolean(currentQuestion && !unknownQuestionId)}
                     caption={session ? 'Aktivní sezení' : 'Výběr'}
                     progressText={
@@ -796,7 +833,36 @@ export function StudyView({ mode, title, description }: StudyViewProps) {
                     showDetailButton={Boolean(currentQuestion && !unknownQuestionId)}
                     sessionActionLabel={session ? 'Ukončit sezení' : undefined}
                     onSessionAction={session ? handleEndSession : undefined}
-                    showContext
+                    showContext={Boolean(session)}
+                    showNavigation
+                  />
+                </div>
+              ) : null}
+
+              {!isDesktopLayout ? (
+                <div className="w-full max-w-[46rem]">
+                  <FlashcardControls
+                    canGoBack={canGoBack}
+                    canGoForward={session ? session.questionIds.length > 0 : canGoForward}
+                    onPrevious={handlePrevious}
+                    onNext={handleNext}
+                    onReveal={handleReveal}
+                    onToggleDetail={handleOpenDetail}
+                    onRate={quickRateHandler}
+                    currentRating={effectiveCurrentRating}
+                    canReveal={Boolean(currentQuestion && !unknownQuestionId)}
+                    caption={session ? 'Aktivní sezení' : 'Výběr'}
+                    progressText={
+                      session
+                        ? `Otázka ${session.currentIndex + 1} z ${session.questionIds.length}`
+                        : filteredQuestions.length
+                          ? `Otázka ${Math.max(currentIndex + 1, 1)} z ${filteredQuestions.length}`
+                          : 'Bez aktivního výběru'
+                    }
+                    showDetailButton={Boolean(currentQuestion && !unknownQuestionId)}
+                    sessionActionLabel={session ? 'Ukončit sezení' : undefined}
+                    onSessionAction={session ? handleEndSession : undefined}
+                    showContext={Boolean(session)}
                     showNavigation
                   />
                 </div>
@@ -866,7 +932,6 @@ export function StudyView({ mode, title, description }: StudyViewProps) {
               onRequestEndSession={handleEndSession}
               currentMastery={currentProgressEntry?.mastery ?? null}
               currentSessionRating={currentSessionRating}
-              revealed={revealed}
               onRate={handleRate}
               canGoBack={canGoBack}
               canGoForward={session ? session.questionIds.length > 0 : canGoForward}

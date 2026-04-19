@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import { DetailPanel } from '@/components/detail-panel'
 import { Flashcard } from '@/components/flashcard'
@@ -20,6 +20,10 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: () => undefined,
     dispatchEvent: () => false,
   }),
+})
+
+afterEach(() => {
+  cleanup()
 })
 
 const sampleQuestion: QuestionDocument = {
@@ -86,6 +90,44 @@ function FlashcardHarness() {
   )
 }
 
+function QuickRatingHarness() {
+  const [revealed, setRevealed] = useState(false)
+  const [ratingCount, setRatingCount] = useState(0)
+
+  return (
+    <div>
+      <Flashcard
+        question={sampleQuestion}
+        revealed={revealed}
+        animateFlip={false}
+        onReveal={() => setRevealed((current) => !current)}
+      />
+      <FlashcardControls
+        canGoBack={false}
+        canGoForward
+        revealed={revealed}
+        onPrevious={() => undefined}
+        onNext={() => undefined}
+        onReveal={() => setRevealed((current) => !current)}
+        onToggleDetail={() => undefined}
+        onRate={() => setRatingCount((current) => current + 1)}
+        currentRating={null}
+        questionIndicators={[
+          {
+            id: sampleQuestion.id,
+            label: '1',
+            rating: null,
+            title: `1. ${sampleQuestion.title}`,
+            active: true,
+          },
+        ]}
+        onSelectQuestionIndicator={() => undefined}
+      />
+      <div data-testid="quick-rated-count">{ratingCount}</div>
+    </div>
+  )
+}
+
 describe('Flashcard flow', () => {
   it('umožní odkrytí odpovědi kliknutím na kartu a následné hodnocení', async () => {
     const user = userEvent.setup()
@@ -120,5 +162,22 @@ describe('Flashcard flow', () => {
 
     await user.click(screen.getAllByText('Cash flow sleduje skutečný pohyb peněžních prostředků.')[0])
     expect(screen.getAllByText('Co je cash flow?').length).toBeGreaterThan(0)
+  })
+
+  it('umožní rychlé hodnocení i bez otočení karty', async () => {
+    const user = userEvent.setup()
+
+    render(<QuickRatingHarness />)
+
+    expect(
+      screen.queryByText('Cash flow sleduje skutečný pohyb peněžních prostředků.'),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /neumím vůbec/i }))
+
+    expect(screen.getByTestId('quick-rated-count')).toHaveTextContent('1')
+    expect(
+      screen.queryByText('Cash flow sleduje skutečný pohyb peněžních prostředků.'),
+    ).not.toBeInTheDocument()
   })
 })

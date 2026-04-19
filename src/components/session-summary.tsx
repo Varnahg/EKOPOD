@@ -29,7 +29,7 @@ export function SessionSummary({
   const unansweredCount = Math.max(questionIds.length - ratedQuestionCount, 0)
   const answerCount = Object.values(session.ratings).reduce((sum, ratings) => sum + ratings.length, 0)
   const ratingBreakdown = ([0, 1, 2, 3] as const).map((key) => {
-    const count = latestRatings.filter((rating) => rating === Number(key)).length
+    const count = latestRatings.filter((rating) => rating === key).length
 
     return {
       rating: key,
@@ -48,16 +48,19 @@ export function SessionSummary({
     .slice(0, 5)
 
   return (
-    <section className="rounded-[2rem] border border-success/35 bg-success/10 p-6 shadow-card">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <section className="rounded-[1.8rem] border border-success/35 bg-success/10 p-5 shadow-card xl:flex xl:h-full xl:min-h-0 xl:flex-1 xl:flex-col xl:overflow-hidden">
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-success">Sezení dokončeno</p>
-          <h2 className="mt-3 font-serif text-4xl text-text-primary">Shrnutí průchodu</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-text-secondary">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-success">
+            Sezení dokončeno
+          </p>
+          <h2 className="mt-2.5 font-serif text-3xl text-text-primary">Shrnutí průchodu</h2>
+          <p className="mt-2.5 max-w-2xl text-sm leading-7 text-text-secondary">
             Zdroj: {session.sourceLabel}. V sezení bylo {session.requestedCount} otázek a dokončeno
             bylo {session.round} kol(a).
           </p>
         </div>
+
         <div className="flex gap-2">
           <button
             type="button"
@@ -78,60 +81,66 @@ export function SessionSummary({
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-4">
-        <SummaryCard label="Otázek v sezení" value={session.requestedCount} />
-        <SummaryCard label="Otázek ohodnoceno" value={ratedQuestionCount} />
-        <SummaryCard label="Bez hodnocení" value={unansweredCount} />
-        <SummaryCard label="Hodnocení celkem" value={answerCount} />
-      </div>
-
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="rounded-2xl border border-border/60 bg-background/30 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-secondary">
-            Poslední stav odpovědí
-          </p>
-          <div className="mt-4 space-y-3">
-            {ratingBreakdown.map(({ rating, count, share, meta }) => (
-              <div key={rating} className="rounded-2xl border border-border/60 bg-surface/55 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-medium text-text-primary">{meta.label}</div>
-                  <div className={cn('rounded-full border px-2.5 py-1 text-xs', meta.badgeClassName)}>
-                    {count}
-                  </div>
-                </div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-background/50">
-                  <div
-                    className={cn('h-full rounded-full', getFillClassName(rating))}
-                    style={{ width: `${share}%` }}
-                  />
-                </div>
-                <div className="mt-2 text-xs text-text-secondary">
-                  {ratedQuestionCount ? `${share} % z ohodnocených otázek` : 'Zatím bez hodnocení'}
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="mt-5 space-y-5 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-1">
+        <div className="grid gap-3 md:grid-cols-4">
+          <SummaryCard label="Otázek v sezení" value={session.requestedCount} />
+          <SummaryCard label="Otázek ohodnoceno" value={ratedQuestionCount} />
+          <SummaryCard label="Bez hodnocení" value={unansweredCount} />
+          <SummaryCard label="Hodnocení celkem" value={answerCount} />
         </div>
 
-        <div className="rounded-2xl border border-border/60 bg-background/30 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-secondary">
-            Nejslabší otázky
-          </p>
-          <div className="mt-4 space-y-3">
-            {weakest.length ? (
-              weakest.map((entry) => (
-                <div key={entry.question?.id} className="rounded-2xl border border-border/60 bg-surface/70 p-3">
-                  <div className="text-sm font-semibold text-text-primary">{entry.question?.title}</div>
-                  <div className="mt-1 text-xs uppercase tracking-[0.14em] text-text-secondary">
-                    {entry.question?.chapter}
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_17rem]">
+          <div className="rounded-2xl border border-border/60 bg-background/30 p-3.5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-secondary">
+              Poslední stav odpovědí
+            </p>
+
+            <div className="mt-3 space-y-2.5">
+              {ratingBreakdown.map(({ rating, count, share, meta }) => (
+                <div key={rating} className="rounded-2xl border border-border/60 bg-surface/55 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-medium text-text-primary">{meta.label}</div>
+                    <div className={cn('rounded-full border px-2.5 py-1 text-xs', meta.badgeClassName)}>
+                      {count}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-background/50">
+                    <div
+                      className={cn('h-full rounded-full', getFillClassName(rating))}
+                      style={{ width: `${share}%` }}
+                    />
+                  </div>
+
+                  <div className="mt-2 text-xs text-text-secondary">
+                    {ratedQuestionCount ? `${share} % z ohodnocených otázek` : 'Zatím bez hodnocení'}
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="rounded-2xl border border-border/60 bg-surface/70 p-3 text-sm leading-6 text-text-secondary">
-                V tomto průchodu zatím nebyla uložena žádná odpověď.
-              </div>
-            )}
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border/60 bg-background/30 p-3.5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-secondary">
+              Nejslabší otázky
+            </p>
+
+            <div className="mt-3 space-y-2.5">
+              {weakest.length ? (
+                weakest.map((entry) => (
+                  <div key={entry.question?.id} className="rounded-2xl border border-border/60 bg-surface/70 p-3">
+                    <div className="text-sm font-semibold text-text-primary">{entry.question?.title}</div>
+                    <div className="mt-1 text-xs uppercase tracking-[0.14em] text-text-secondary">
+                      {entry.question?.chapter}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-border/60 bg-surface/70 p-3 text-sm leading-6 text-text-secondary">
+                  V tomto průchodu zatím nebyla uložena žádná odpověď.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -141,9 +150,9 @@ export function SessionSummary({
 
 function SummaryCard({ label, value }: { label: string; value: number }) {
   return (
-    <article className="rounded-2xl border border-border/60 bg-background/30 p-4">
+    <article className="rounded-2xl border border-border/60 bg-background/30 p-3.5">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-secondary">{label}</p>
-      <div className="mt-3 font-serif text-4xl text-text-primary">{value}</div>
+      <div className="mt-2.5 font-serif text-[2rem] leading-none text-text-primary">{value}</div>
     </article>
   )
 }
